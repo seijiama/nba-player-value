@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NBA Player Value</title>
+  <meta name="description" content="What NBA players should earn based on their production, compared with what they're actually paid, 2015–16 through 2025–26.">
+  <meta name="theme-color" content="#0e141b">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#lookup">Skip to player lookup</a>
+
+  <header class="masthead">
+    <div class="wrap">
+      <h1 class="masthead-title">Who's worth the money?</h1>
+      <p class="masthead-dek">
+        Two models read every qualifying player's box score and predict what he should earn.
+        The gap between that prediction and his real salary is his surplus. Covers
+        <span id="season-span">2015–16 to 2025–26</span>.
+      </p>
+    </div>
+  </header>
+
+  <nav class="filters" aria-label="Filters for the whole page">
+    <div class="wrap filters-row">
+      <label class="field">
+        <span class="field-label">Season</span>
+        <select id="season-select"></select>
+      </label>
+
+      <div class="field">
+        <span class="field-label" id="model-label">Model</span>
+        <div class="segmented" role="radiogroup" aria-labelledby="model-label" id="model-toggle">
+          <button type="button" role="radio" data-model="market" aria-checked="true">Market value</button>
+          <button type="button" role="radio" data-model="production" aria-checked="false">Production value</button>
+        </div>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Team</span>
+        <select id="team-select">
+          <option value="all">All teams</option>
+        </select>
+      </label>
+    </div>
+  </nav>
+
+  <main>
+    <section class="wrap section" id="lookup" aria-labelledby="lookup-title">
+      <div class="section-head">
+        <h2 id="lookup-title">Player lookup</h2>
+        <p class="section-note">Search any player who played 55+ games in a season, or click a dot on the charts below.</p>
+      </div>
+
+      <div class="search" id="search">
+        <label for="player-search" class="visually-hidden">Search players</label>
+        <input id="player-search" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Search a player, e.g. Jalen Brunson"
+               role="combobox" aria-expanded="false" aria-controls="search-results" aria-autocomplete="list">
+        <ul id="search-results" role="listbox" hidden></ul>
+      </div>
+
+      <div class="lookup-grid">
+        <article class="card" id="player-card" aria-live="polite"></article>
+
+        <div class="board">
+          <div class="board-head">
+            <h3 id="board-title">Best value</h3>
+            <div class="segmented small" role="radiogroup" aria-label="Sort order" id="sort-toggle">
+              <button type="button" role="radio" data-dir="desc" aria-checked="true">Most underpaid</button>
+              <button type="button" role="radio" data-dir="asc" aria-checked="false">Most overpaid</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="board-table" id="board-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="num">#</th>
+                  <th scope="col">Player</th>
+                  <th scope="col">Team</th>
+                  <th scope="col" class="num">Age</th>
+                  <th scope="col" class="num col-salary">Salary</th>
+                  <th scope="col" class="num">Predicted</th>
+                  <th scope="col" class="num col-salary">Surplus</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <button type="button" class="text-button" id="board-more"></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap section" id="charts" aria-labelledby="charts-title">
+      <div class="section-head">
+        <h2 id="charts-title">Pay vs. production</h2>
+        <p class="section-note">Drag to zoom, shift-drag or use the toolbar to pan, double-click to reset. Click a dot to open that player.</p>
+      </div>
+
+      <div class="chart-controls">
+        <fieldset class="season-picks">
+          <legend>Seasons on the charts</legend>
+          <div class="chips" id="season-chips"></div>
+        </fieldset>
+        <div class="field">
+          <span class="field-label" id="unit-label">Units</span>
+          <div class="segmented small" role="radiogroup" aria-labelledby="unit-label" id="unit-toggle">
+            <button type="button" role="radio" data-unit="usd" aria-checked="true">Dollars</button>
+            <button type="button" role="radio" data-unit="pct" aria-checked="false">% of cap</button>
+          </div>
+        </div>
+      </div>
+
+      <figure class="chart">
+        <figcaption>
+          <h3>Actual salary vs. predicted salary</h3>
+          <p id="scatter-pay-note">Dots above the line are paid more than the model predicts; dots below are bargains.</p>
+        </figcaption>
+        <div class="plot" id="scatter-pay" role="img" aria-label="Scatter plot of actual salary against predicted salary"></div>
+      </figure>
+
+      <figure class="chart">
+        <figcaption>
+          <h3>Over- or underpaid, by age</h3>
+          <p id="scatter-age-note">Actual minus predicted salary. Above zero means paid more than the model predicts.</p>
+        </figcaption>
+        <div class="plot" id="scatter-age" role="img" aria-label="Scatter plot of residual against player age"></div>
+      </figure>
+    </section>
+
+    <section class="wrap section" id="teams" aria-labelledby="teams-title">
+      <div class="section-head">
+        <h2 id="teams-title">Team surplus</h2>
+        <p class="section-note" id="team-note">Predicted minus actual salary, summed across each roster's qualifying players. Traded players are left out because their salary can't be split by team.</p>
+      </div>
+      <figure class="chart">
+        <div class="plot plot-short" id="team-bars" role="img" aria-label="Bar chart of total team surplus"></div>
+      </figure>
+    </section>
+
+    <section class="wrap section method" id="method" aria-labelledby="method-title">
+      <div class="section-head">
+        <h2 id="method-title">How the models work</h2>
+      </div>
+
+      <div class="method-grid">
+        <div class="method-model">
+          <h3>Market value</h3>
+          <p class="r2"><span class="r2-value">0.71</span> test R²</p>
+          <p>
+            A random forest trained on per-game box-score stats, games played, minutes and age.
+            It predicts salary as a share of that season's cap. Because it knows age, it learns
+            how the league actually pays: cheap rookie-scale deals for young players and bigger
+            maximums for veterans.<sup><a href="#fn-a" id="ref-a1">a</a></sup>
+          </p>
+        </div>
+        <div class="method-model">
+          <h3>Production value</h3>
+          <p class="r2"><span class="r2-value">0.57</span> test R²</p>
+          <p>
+            The same model with age removed. It can only price what a player does on the court,
+            so it explains less of real salaries but sits closer to pure on-court
+            worth.<sup><a href="#fn-a" id="ref-a2">a</a></sup> The gap between the two predictions
+            is the <em>CBA discount</em> shown on each player card.
+          </p>
+        </div>
+      </div>
+
+      <dl class="method-facts">
+        <div>
+          <dt>Data</dt>
+          <dd>Per-game stats and salaries from <a href="https://www.basketball-reference.com/" rel="noopener">Basketball-Reference</a>, 2015–16 through 2025–26.</dd>
+        </div>
+        <div>
+          <dt>Who's included</dt>
+          <dd>Players with at least 55 games in a season, so injury-shortened seasons don't skew pay comparisons.</dd>
+        </div>
+        <div>
+          <dt>Residual</dt>
+          <dd>(Actual salary − predicted salary) ÷ that season's salary cap. Positive means overpaid relative to the model. Surplus is the same gap with the sign flipped, in dollars.</dd>
+        </div>
+        <div>
+          <dt>Why % of cap</dt>
+          <dd>The cap more than doubled, from $70.0M in 2015–16 to $154.6M in 2025–26, so the same dollar figure means very different things across seasons.</dd>
+        </div>
+        <div>
+          <dt>Train / test</dt>
+          <dd>80% of 2015–16 to 2024–25 player-seasons trained the models; the other 20% were held out to measure the R² above. 2025–26 is a pure projection with no salaries yet.<sup><a href="#fn-b" id="ref-b">b</a></sup></dd>
+        </div>
+      </dl>
+
+      <ol class="footnotes">
+        <li id="fn-a"><span class="fn-mark">a</span> The market model reflects how the NBA actually pays, including the rookie scale and maximum-salary tiers set by years of service. The production model is age-blind and closer to pure on-court worth. <a href="#ref-a1" aria-label="Back to text">↩</a></li>
+        <li id="fn-b"><span class="fn-mark">b</span> The 2015–16 to 2024–25 seasons are in-sample: the models trained on that data, so historical residuals look slightly better than the models would do on new seasons. Rows marked “held-out” on a player card are the exception. <a href="#ref-b" aria-label="Back to text">↩</a></li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer-row">
+      <p>Built by Seiji Ma.</p>
+      <p class="footer-meta" id="footer-meta"></p>
+    </div>
+  </footer>
+
+  <noscript><p class="wrap">This page needs JavaScript to load the data and charts.</p></noscript>
+</body>
+</html>

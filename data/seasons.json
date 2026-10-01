@@ -1,0 +1,177 @@
+{
+  "generated": "2026-10-01",
+  "min_games": 55,
+  "seasons": [
+    {
+      "season": 2016,
+      "label": "2015–16",
+      "cap": 70000000,
+      "players": 275,
+      "has_salary": true,
+      "splits": [
+        "test",
+        "train"
+      ]
+    },
+    {
+      "season": 2017,
+      "label": "2016–17",
+      "cap": 94143000,
+      "players": 276,
+      "has_salary": true,
+      "splits": [
+        "test",
+        "train"
+      ]
+    },
+    {
+      "season": 2018,
+      "label": "2017–18",
+      "cap": 99093000,
+      "players": 245,
+      "has_salary": true,
+      "splits": [
+        "test",
+        "train"
+      ]
+    },
+    {
+      "season": 2019,
+      "label": "2018–19",
+      "cap": 101869000,
+      "players": 263,
+      "has_salary": true,
+      "splits": [
+        "test",
+        "train"
+      ]
+    },
+    {
+      "season": 2020,
+      "label": "2019–20",
+      "cap": 109140000,
+      "players": 221,
+      "has_salary": true,
+      "splits": [
+        "test",
+        "train"
+      ]
+    },
+    {
+      "season": 2021,
+      "label": "2020–21",
+      "cap": 109140000,
+      "players": 176,
+      "has_salary": true,
+      "splits": [
+        "test",
+        "train"
+      ]
+    },
+    {
+      "season": 2022,
+      "label": "2021–22",
+      "cap": 112414000,
+      "players": 234,
+      "has_salary": true,
+      "splits": [
+        "test",
+        "train"
+      ]
+    },
+    {
+      "season": 2023,
+      "label": "2022–23",
+      "cap": 123655000,
+      "players": 235,
+      "has_salary": true,
+      "splits": [
+        "test",
+        "train"
+      ]
+    },
+    {
+      "season": 2024,
+      "label": "2023–24",
+      "cap": 136021000,
+      "players": 236,
+      "has_salary": true,
+      "splits": [
+        "test",
+        "train"
+      ]
+    },
+    {
+      "season": 2025,
+      "label": "2024–25",
+      "cap": 140588000,
+      "players": 257,
+      "has_salary": true,
+      "splits": [
+        "test",
+        "train"
+      ]
+    },
+    {
+      "season": 2026,
+      "label": "2025–26",
+      "cap": 154647000,
+      "players": 265,
+      "has_salary": false,
+      "splits": [
+        "projection"
+      ]
+    }
+  ],
+  "models": [
+    {
+      "id": "market",
+      "label": "Market value",
+      "short": "Market",
+      "r2": 0.71,
+      "description": "Age-aware. Learns how the NBA actually pays."
+    },
+    {
+      "id": "production",
+      "label": "Production value",
+      "short": "Production",
+      "r2": 0.57,
+      "description": "Age-blind. Closer to pure on-court worth."
+    }
+  ],
+  "teams": [
+    "2TM",
+    "3TM",
+    "ATL",
+    "BKN",
+    "BOS",
+    "CHA",
+    "CHI",
+    "CLE",
+    "DAL",
+    "DEN",
+    "DET",
+    "GSW",
+    "HOU",
+    "IND",
+    "LAC",
+    "LAL",
+    "MEM",
+    "MIA",
+    "MIL",
+    "MIN",
+    "NOP",
+    "NYK",
+    "OKC",
+    "ORL",
+    "PHI",
+    "PHX",
+    "POR",
+    "SAC",
+    "SAS",
+    "TOR",
+    "UTA",
+    "WAS"
+  ],
+  "files": "data/{season}-{model}.json"
+}
