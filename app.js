@@ -53,6 +53,16 @@
   const FONT = '"Archivo", system-ui, -apple-system, "Segoe UI", sans-serif';
   const BOARD_ROWS = 12;
 
+  // Leaderboard sort options. `natural` is the direction a fresh click uses.
+  const SORTS = {
+    surplus: { label: "surplus", natural: "desc", needsSalary: true, get: (r) => r.surplus },
+    pred: { label: "predicted salary", natural: "desc", get: (r) => r.pred },
+    salary: { label: "actual salary", natural: "desc", needsSalary: true, get: (r) => r.salary },
+    pts: { label: "points per game", natural: "desc", get: (r) => r.pts },
+    age: { label: "age", natural: "asc", get: (r) => r.age },
+    player: { label: "name", natural: "asc", get: (r) => r.player },
+  };
+
   // ---------- State ----------
 
   const state = {
@@ -62,6 +72,7 @@
     season: null,
     model: "market",
     team: "all",
+    sortKey: "surplus",  // default ranking: predicted − actual salary
     sortDir: "desc",
     showAll: false,
     scatterSeasons: new Set(),
@@ -75,7 +86,9 @@
     seasonSelect: $("#season-select"),
     teamSelect: $("#team-select"),
     modelToggle: $("#model-toggle"),
-    sortToggle: $("#sort-toggle"),
+    sortKey: $("#sort-key"),
+    sortDirBtn: $("#sort-dir"),
+    boardHead: $("#board-table thead"),
     unitToggle: $("#unit-toggle"),
     chips: $("#season-chips"),
     search: $("#player-search"),
@@ -92,6 +105,8 @@
     ageNote: $("#scatter-age-note"),
     footerMeta: $("#footer-meta"),
     seasonSpan: $("#season-span"),
+    salarySourceNote: $("#salary-source-note"),
+    projectionNote: $("#projection-note"),
   };
 
   // ---------- Helpers ----------
@@ -195,6 +210,9 @@
     if (seasonInfo(season)) state.season = season;
     if (p.get("model") && modelInfo(p.get("model"))) state.model = p.get("model");
     if (p.get("team") && (p.get("team") === "all" || state.manifest.teams.includes(p.get("team")))) state.team = p.get("team");
+    const [sk, sd] = (p.get("sort") || "").split("-");
+    if (SORTS[sk]) state.sortKey = sk;
+    if (sd === "asc" || sd === "desc") state.sortDir = sd;
     if (p.get("player") && state.players.has(p.get("player"))) {
       state.player = p.get("player");
       const cs = Number(p.get("card"));
@@ -204,6 +222,7 @@
 
   function writeHash() {
     const p = new URLSearchParams({ season: state.season, model: state.model, team: state.team });
+    if (state.sortKey !== "surplus" || state.sortDir !== "desc") p.set("sort", `${state.sortKey}-${state.sortDir}`);
     if (state.player) { p.set("player", state.player); p.set("card", state.cardSeason); }
     history.replaceState(null, "", `#${p}`);
   }
@@ -256,17 +275,49 @@
 
     const latest = seasons[seasons.length - 1];
     el.footerMeta.textContent = `Data through ${latest.label}. Updated ${state.manifest.generated}.`;
+
+    const sourced = seasons.filter((s) => s.salary_source);
+    el.salarySourceNote.textContent = sourced.map((s) => ` ${s.label} salaries are from ${s.salary_source}.`).join("");
+    if (!latest.has_salary) el.projectionNote.textContent = ` Its salaries aren't in the data yet, so it shows predictions only.`;
   }
 
   function syncControls() {
     el.seasonSelect.value = state.season;
     el.teamSelect.value = state.team;
     setRadio(el.modelToggle, "model", state.model);
-    setRadio(el.sortToggle, "dir", state.sortDir);
+    syncSort();
     setRadio(el.unitToggle, "unit", state.unit);
     el.chips.classList.toggle("by-season", state.scatterSeasons.size > 1);
     el.chips.querySelectorAll("input").forEach((i) => { i.checked = state.scatterSeasons.has(Number(i.value)); });
-    el.sortToggle.hidden = !hasSalary(state.season);
+  }
+
+  // The sort actually applied: salary-based sorts fall back to predicted salary
+  // for a season without salaries, without forgetting the user's choice.
+  function effectiveSort() {
+    const key = SORTS[state.sortKey].needsSalary && !hasSalary(state.season) ? "pred" : state.sortKey;
+    return { key, dir: state.sortDir };
+  }
+
+  function syncSort() {
+    const { key, dir } = effectiveSort();
+    const salary = hasSalary(state.season);
+    el.sortKey.querySelectorAll("option").forEach((o) => { o.disabled = !salary && !!SORTS[o.value].needsSalary; });
+    el.sortKey.value = key;
+    const text = key === "player" ? (dir === "asc" ? "A to Z" : "Z to A") : (dir === "desc" ? "High to low" : "Low to high");
+    el.sortDirBtn.textContent = text;
+    el.boardHead.querySelectorAll("th[data-sort]").forEach((th) => {
+      if (th.dataset.sort === key) th.setAttribute("aria-sort", dir === "asc" ? "ascending" : "descending");
+      else th.removeAttribute("aria-sort");
+    });
+  }
+
+  function setSort(key, dir) {
+    state.sortKey = key;
+    state.sortDir = dir;
+    state.showAll = false;
+    syncSort();
+    renderBoard();
+    writeHash();
   }
 
   function setSeason(season) {
@@ -294,13 +345,18 @@
       renderAll();
     });
 
-    el.sortToggle.addEventListener("click", (e) => {
-      const b = e.target.closest("button[data-dir]");
-      if (!b) return;
-      state.sortDir = b.dataset.dir;
-      state.showAll = false;
-      syncControls();
-      renderBoard();
+    el.sortKey.addEventListener("change", () => setSort(el.sortKey.value, SORTS[el.sortKey.value].natural));
+    el.sortDirBtn.addEventListener("click", () => {
+      const { key, dir } = effectiveSort();
+      setSort(key, dir === "desc" ? "asc" : "desc");
+    });
+    el.boardHead.addEventListener("click", (e) => {
+      const th = e.target.closest("th[data-sort]");
+      if (!th || !e.target.closest("button")) return;
+      const key = th.dataset.sort;
+      if (SORTS[key].needsSalary && !hasSalary(state.season)) return;
+      const cur = effectiveSort();
+      setSort(key, cur.key === key ? (cur.dir === "desc" ? "asc" : "desc") : SORTS[key].natural);
     });
 
     el.unitToggle.addEventListener("click", (e) => {
@@ -520,7 +576,9 @@
     const splitText = {
       train: "Training row: the models saw this season (footnote b)",
       test: "Held-out test row: the models never saw this season",
-      projection: `${info.label} projection: no actual salary yet`,
+      projection: base.salary != null
+        ? `${info.label}: a season the models never saw`
+        : `${info.label} projection: no actual salary on record`,
     }[base.split];
     if (splitText) addTag(splitText);
     if (tags.children.length) top.append(tags);
@@ -556,7 +614,7 @@
       sub.textContent = `${pct(base.salary_pct)} of cap`;
       av.append(sub);
     } else {
-      av.textContent = "Not available yet";
+      av.textContent = info.has_salary ? "Not on record" : "Not available yet";
     }
     actual.append(al, av);
 
@@ -584,7 +642,8 @@
       add("Share of cap", pct(r.pred_pct));
       if (r.salary != null) {
         add("Surplus", money(r.surplus, { signed: true }), r.surplus >= 0 ? "is-under" : "is-over");
-        add("Value rank", `${ordinal(r.surplus_rank)} of ${info.players}`);
+        const ranked = recordsFor(season, m.id).filter((x) => x.salary != null).length;
+        add("Value rank", `${ordinal(r.surplus_rank)} of ${ranked}`);
       } else {
         add("Predicted-value rank", `${ordinal(r.pred_rank)} of ${info.players}`);
       }
@@ -616,32 +675,39 @@
   function renderBoard() {
     const season = state.season;
     const salary = hasSalary(season);
-    let rows = byTeam(recordsFor(season));
     const scope = state.team === "all" ? "" : `, ${teamName(state.team)}`;
+    const { key, dir } = effectiveSort();
+    const get = SORTS[key].get;
+    const sign = dir === "desc" ? -1 : 1;
+    // Missing values (e.g. no salary on record) always sink to the bottom.
+    const rows = [...byTeam(recordsFor(season))].sort((a, b) => {
+      const va = get(a), vb = get(b);
+      if (va == null || vb == null) return (va == null) - (vb == null);
+      const c = typeof va === "string" ? va.localeCompare(vb) : va - vb;
+      return sign * c || b.pred - a.pred;
+    });
 
-    if (salary) {
-      rows = [...rows].sort((a, b) => (state.sortDir === "desc" ? b.surplus - a.surplus : a.surplus - b.surplus));
-      el.boardTitle.textContent = `${state.sortDir === "desc" ? "Best value" : "Most overpaid"}, ${seasonLabel(season)}${scope}`;
-    } else {
-      rows = [...rows].sort((a, b) => b.pred - a.pred);
-      el.boardTitle.textContent = `Highest predicted value, ${seasonLabel(season)}${scope}`;
-    }
+    const title = key === "surplus"
+      ? (dir === "desc" ? "Most underpaid" : "Most overpaid")
+      : `By ${SORTS[key].label}, ${key === "player" ? (dir === "asc" ? "A to Z" : "Z to A") : dir === "desc" ? "high to low" : "low to high"}`;
+    el.boardTitle.textContent = `${title}, ${seasonLabel(season)}${scope}`;
 
     const shown = state.showAll ? rows : rows.slice(0, BOARD_ROWS);
     const frag = document.createDocumentFragment();
-    for (const r of shown) {
+    shown.forEach((r, i) => {
       const tr = document.createElement("tr");
       tr.dataset.id = r.id;
       tr.tabIndex = 0;
       if (r.id === state.player) tr.className = "is-current";
       const cells = [
-        [salary ? r.surplus_rank : r.pred_rank, "num rank"],
+        [i + 1, "num rank"],
         [r.player, ""],
         [r.team, ""],
         [r.age, "num"],
+        [r.pts.toFixed(1), "num"],
         [money(r.salary), "num col-salary"],
         [money(r.pred), "num"],
-        [salary ? money(r.surplus, { signed: true }) : "—", "num col-salary" + (salary ? (r.surplus >= 0 ? " is-under" : " is-over") : "")],
+        [r.surplus != null ? money(r.surplus, { signed: true }) : "—", "num col-salary" + (r.surplus != null ? (r.surplus >= 0 ? " is-under" : " is-over") : "")],
       ];
       for (const [v, cls] of cells) {
         const td = document.createElement("td");
@@ -650,7 +716,7 @@
         tr.append(td);
       }
       frag.append(tr);
-    }
+    });
     el.boardBody.replaceChildren(frag);
     el.boardBody.closest("table").classList.toggle("no-salary", !salary);
 
@@ -768,7 +834,7 @@
       const msg = state.scatterSeasons.size === 0
         ? (hasSalary(state.season)
             ? "Pick at least one season above to plot."
-            : `${seasonLabel(state.season)} has no salary data yet, so there's nothing to compare predictions against. Pick earlier seasons above.`)
+            : `${seasonLabel(state.season)} doesn't have actual salaries in the data yet, so there's nothing to compare predictions against. Pick earlier seasons above.`)
         : `No qualifying ${teamName(state.team)} players in the selected seasons.`;
       showEmpty(el.pay, msg);
       showEmpty(el.age, msg);
@@ -852,7 +918,7 @@
       const season = state.season;
       if (!hasSalary(season)) {
         el.teamNote.textContent = "Predicted minus actual salary, summed across each roster's qualifying players.";
-        showEmpty(el.bars, `${seasonLabel(season)} has no salary data yet. Pick an earlier season to see team surplus.`);
+        showEmpty(el.bars, `${seasonLabel(season)} doesn't have actual salaries in the data yet. Pick an earlier season to see team surplus.`);
         return;
       }
       const sums = new Map();
@@ -952,9 +1018,8 @@
     if (!state.player) {
       // Start on the season's best-value player so the card is never empty.
       const rows = recordsFor(state.season);
-      const top = hasSalary(state.season)
-        ? rows.reduce((a, b) => (b.surplus > a.surplus ? b : a), rows[0])
-        : rows[0];
+      const paid = rows.filter((r) => r.surplus != null);
+      const top = paid.length ? paid.reduce((a, b) => (b.surplus > a.surplus ? b : a)) : rows[0];
       if (top) { state.player = top.id; state.cardSeason = state.season; }
     }
     if (state.player && !state.cardSeason) {

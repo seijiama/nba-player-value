@@ -56,6 +56,17 @@ The script stops with a message and writes nothing if any of these checks fail:
 
 It also merges spelling variants of the same name (e.g. "Nikola Jokic" in older seasons and "Nikola Jokić" in newer ones) so search finds one player.
 
+### Adding salaries for a season that only has predictions
+
+2025–26 came in with stats and predictions but no actual salaries. To add them, save a CSV with a player-name column and a salary column (a table copied from HoopsHype or Basketball-Reference works; `$` signs and commas are fine), then run:
+
+```bash
+python scripts/add_salaries.py salaries-2026.csv --season 2026 --source "HoopsHype"
+python scripts/build_data.py
+```
+
+`add_salaries.py` only fills in `Salary` and recomputes `residual`. It never changes predictions. It lists any players it couldn't match by name; add those to `ALIASES` in the script and rerun with `--overwrite`. The `--source` text is saved in `salary-sources.json` and shown in the site's methodology section. If you regenerate `all-seasons-values.csv` with `make_values_csv.py`, run `add_salaries.py` again afterwards.
+
 ### Adding a new season
 
 1. Add the season's cap to `CAPS` in `scripts/build_data.py`, e.g. `2027: 165_000_000,`.
@@ -63,7 +74,7 @@ It also merges spelling variants of the same name (e.g. "Nikola Jokic" in older 
 3. Run `python scripts/build_data.py`.
 4. Commit `all-seasons-values.csv` and `data/`, then push. The site picks up new seasons from `data/seasons.json` automatically.
 
-When actual salaries arrive for a projection season, fill in `Salary` and `residual` for those rows and rebuild. The charts and team totals switch on for that season automatically.
+When actual salaries arrive for a projection season, add them with `add_salaries.py` and rebuild. The charts, team totals and surplus sorting switch on for that season automatically.
 
 ## Running it locally
 
@@ -82,8 +93,8 @@ GitHub Pages serves the `main` branch from the repository root. Push to `main` a
 
 - **Market value model.** Random forest on per-game stats, games, minutes and age. Predicts salary as a share of the cap. Test R² 0.71.
 - **Production value model.** The same model without age. Test R² 0.57.
-- **Data.** [Basketball-Reference](https://www.basketball-reference.com/) per-game stats and salaries. Only player-seasons with 55+ games are included.
+- **Data.** [Basketball-Reference](https://www.basketball-reference.com/) per-game stats. Salaries for 2015–16 to 2024–25 come with the training dataset; the source for any later season is listed in `salary-sources.json`. Only player-seasons with 55+ games are included.
 - **Residual.** `(actual − predicted) / cap`. Positive means overpaid relative to the model.
-- **In-sample caveat.** 80% of 2015–16 to 2024–25 rows trained the models, so historical residuals look slightly better than they would on new data. 2025–26 is a projection with no salaries yet.
+- **In-sample caveat.** 80% of 2015–16 to 2024–25 rows trained the models, so historical residuals look slightly better than they would on new data. 2025–26 was never used in training, so it's fully out-of-sample.
 
 Built by Seiji Ma.

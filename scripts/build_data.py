@@ -39,6 +39,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CSV = ROOT / "all-seasons-values.csv"
 DATA_DIR = ROOT / "data"
+# Written by scripts/add_salaries.py: where a season's salaries came from, when
+# it isn't the training dataset. Shown in the site's methodology section.
+SOURCES_FILE = ROOT / "salary-sources.json"
 
 # NBA salary cap by season-end year, in dollars. Add a line here before you
 # add a new season to the CSV - the build refuses seasons without a cap.
@@ -195,9 +198,13 @@ def validate(df: pd.DataFrame) -> list[str]:
     if low_games:
         notes.append(f"  warning: {low_games // 2} player-season(s) have fewer than {MIN_GAMES} games")
 
-    no_salary = df.loc[~has_salary, "Season"].unique()
-    if len(no_salary):
-        notes.append(f"  seasons without actual salaries (predictions only): {sorted(no_salary.tolist())}")
+    per_season = df[df["model"] == "market"].groupby("Season")["Salary"].agg(lambda s: s.isna().sum())
+    for season, n in per_season.items():
+        total = int((df[(df["model"] == "market")]["Season"] == season).sum())
+        if n == total:
+            notes.append(f"  {season}: no actual salaries (predictions only)")
+        elif n:
+            notes.append(f"  {season}: {n} of {total} players have no salary and are left out of salary charts")
 
     return notes
 
@@ -261,6 +268,7 @@ def build(csv_path: Path) -> None:
     if renamed:
         print(f"  merged {renamed} spelling variant(s) of player names (accents)")
 
+    sources = json.loads(SOURCES_FILE.read_text()) if SOURCES_FILE.exists() else {}
     season_info = []
     for season in sorted(df["Season"].unique()):
         for model in MODELS:
@@ -275,6 +283,7 @@ def build(csv_path: Path) -> None:
             "cap": CAPS[season],
             "players": int(len(s)),
             "has_salary": bool(s["Salary"].notna().any()),
+            "salary_source": sources.get(str(season)),
             "splits": splits,
         })
 

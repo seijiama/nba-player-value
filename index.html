@@ -71,10 +71,20 @@
 
         <div class="board">
           <div class="board-head">
-            <h3 id="board-title">Best value</h3>
-            <div class="segmented small" role="radiogroup" aria-label="Sort order" id="sort-toggle">
-              <button type="button" role="radio" data-dir="desc" aria-checked="true">Most underpaid</button>
-              <button type="button" role="radio" data-dir="asc" aria-checked="false">Most overpaid</button>
+            <h3 id="board-title">Most underpaid</h3>
+            <div class="sort-controls">
+              <label class="sort-field">
+                <span class="field-label">Sort by</span>
+                <select id="sort-key" class="small">
+                  <option value="surplus">Surplus (predicted − actual)</option>
+                  <option value="pred">Predicted salary</option>
+                  <option value="salary">Actual salary</option>
+                  <option value="pts">Points per game</option>
+                  <option value="age">Age</option>
+                  <option value="player">Name</option>
+                </select>
+              </label>
+              <button type="button" class="dir-button" id="sort-dir" aria-label="Reverse sort order">High to low</button>
             </div>
           </div>
           <div class="table-scroll">
@@ -82,17 +92,19 @@
               <thead>
                 <tr>
                   <th scope="col" class="num">#</th>
-                  <th scope="col">Player</th>
+                  <th scope="col" data-sort="player"><button type="button">Player</button></th>
                   <th scope="col">Team</th>
-                  <th scope="col" class="num">Age</th>
-                  <th scope="col" class="num col-salary">Salary</th>
-                  <th scope="col" class="num">Predicted</th>
-                  <th scope="col" class="num col-salary">Surplus</th>
+                  <th scope="col" class="num" data-sort="age"><button type="button">Age</button></th>
+                  <th scope="col" class="num" data-sort="pts"><button type="button">Pts</button></th>
+                  <th scope="col" class="num col-salary" data-sort="salary"><button type="button">Salary</button></th>
+                  <th scope="col" class="num" data-sort="pred"><button type="button">Predicted</button></th>
+                  <th scope="col" class="num col-salary" data-sort="surplus"><button type="button">Surplus</button></th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
+          <p class="board-note">Surplus is predicted minus actual salary. Positive means the player is paid less than the model says he's worth. Click a column heading to sort by it.</p>
           <button type="button" class="text-button" id="board-more"></button>
         </div>
       </div>
@@ -176,7 +188,7 @@
       <dl class="method-facts">
         <div>
           <dt>Data</dt>
-          <dd>Per-game stats and salaries from <a href="https://www.basketball-reference.com/" rel="noopener">Basketball-Reference</a>, 2015–16 through 2025–26.</dd>
+          <dd>Per-game stats from <a href="https://www.basketball-reference.com/" rel="noopener">Basketball-Reference</a>, 2015–16 through 2025–26. Salaries for 2015–16 to 2024–25 come with the training dataset.<span id="salary-source-note"></span></dd>
         </div>
         <div>
           <dt>Who's included</dt>
@@ -192,7 +204,7 @@
         </div>
         <div>
           <dt>Train / test</dt>
-          <dd>80% of 2015–16 to 2024–25 player-seasons trained the models; the other 20% were held out to measure the R² above. 2025–26 is a pure projection with no salaries yet.<sup><a href="#fn-b" id="ref-b">b</a></sup></dd>
+          <dd>80% of 2015–16 to 2024–25 player-seasons trained the models; the other 20% were held out to measure the R² above. The models never saw 2025–26 at all, so it's a true out-of-sample season.<span id="projection-note"></span><sup><a href="#fn-b" id="ref-b">b</a></sup></dd>
         </div>
       </dl>
 

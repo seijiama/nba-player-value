@@ -344,6 +344,29 @@ h3 { margin: 0; font-size: 1.0625rem; font-weight: 600; }
 .board-table .rank { color: var(--muted); }
 .board-table.no-salary .col-salary { display: none; }
 
+.sort-controls { display: flex; align-items: flex-end; gap: 8px; }
+.sort-field { display: flex; flex-direction: column; gap: 4px; }
+select.small { height: 34px; font-size: 0.875rem; background-position: calc(100% - 17px) 14px, calc(100% - 12px) 14px; min-width: 0; }
+.dir-button {
+  font: inherit; font-size: 0.875rem; color: var(--text-2);
+  height: 34px; padding: 0 12px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--radius-s);
+}
+.dir-button:hover { color: var(--text); }
+
+/* Sortable headings: the active column is the only one in accent */
+.board-table th button {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.board-table th button:hover { color: var(--text); }
+.board-table th[aria-sort] button { color: var(--accent); font-weight: 600; }
+.board-table th[aria-sort="descending"] button::after { content: "↓"; }
+.board-table th[aria-sort="ascending"] button::after { content: "↑"; }
+.board-table th.num button { flex-direction: row-reverse; }
+
+.board-note { margin: 10px 16px 0; font-size: 0.8125rem; color: var(--muted); max-width: 60ch; }
+
 .text-button {
   font: inherit; font-size: 0.9375rem; color: var(--text-2);
   background: none; border: 0; padding: 10px 16px 4px; cursor: pointer;
